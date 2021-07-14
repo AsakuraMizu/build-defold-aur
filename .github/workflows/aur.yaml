@@ -1,0 +1,40 @@
+name: AUR
+
+on:
+  push
+  schedule:
+    - cron: '0 0 * * *'
+
+jobs:
+  aur:
+    name: AUR
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+
+      - id: ci
+        run: deno run --allow-read --allow-write --allow-run --allow-net ci.ts
+
+      - uses: AsakuraMizu/github-actions-deploy-aur@master
+        if: ${{ steps.ci.outputs.flag == 'true' }}
+        with:
+          pkgname: defold
+          pkgpath: ./template
+          commit_username: ${{ secrets.AUR_USERNAME }}
+          commit_email: ${{ secrets.AUR_EMAIL }}
+          ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
+          commit_message: ${{ steps.ci.outputs.version }}
+          ssh_keyscan_types: rsa,dsa,ecdsa,ed25519
+      
+      - uses: EndBug/add-and-commit@v7
+        if: ${{ steps.ci.outputs.flag == 'true' }}
+        with:
+          add: 'VERSION'
+          message: ${{ format('{0}({1})', steps.ci.outputs.version, steps.ci.outputs.sha1) }}
+          tag: ${{ steps.ci.outputs.version }}
