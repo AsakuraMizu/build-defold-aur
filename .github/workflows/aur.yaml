@@ -5,7 +5,7 @@ on:
     branches:
       - main
   schedule:
-    - cron: '0 0 * * *'
+    - cron: "0 0 * * *"
 
 jobs:
   aur:
@@ -16,28 +16,24 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - uses: denoland/setup-deno@v1
-        with:
-          deno-version: v1.x
+      - id: update
+        run: node update.mjs
 
-      - id: ci
-        run: deno run --allow-read --allow-write --allow-run --allow-net ci.ts
-
-      - uses: AsakuraMizu/github-actions-deploy-aur@master
-        if: ${{ steps.ci.outputs.flag == 'true' }}
+      - uses: KSXGitHub/github-actions-deploy-aur@v2.7.1
+        if: ${{ steps.update.outputs.update == 'true' }}
         with:
           pkgname: defold
-          pkgpath: ./template
+          pkgbuild: PKGBUILD
+          updpkgsums: true
           commit_username: ${{ secrets.AUR_USERNAME }}
           commit_email: ${{ secrets.AUR_EMAIL }}
           ssh_private_key: ${{ secrets.AUR_SSH_PRIVATE_KEY }}
-          commit_message: ${{ steps.ci.outputs.version }}
-          ssh_keyscan_types: rsa,dsa,ecdsa,ed25519
-          force_push: true
-      
-      - uses: EndBug/add-and-commit@v7
-        if: ${{ steps.ci.outputs.flag == 'true' }}
+          commit_message: ${{ steps.update.outputs.version }}
+
+      - uses: EndBug/add-and-commit@v9.1.4
+        if: ${{ steps.update.outputs.update == 'true' }}
         with:
-          add: 'VERSION'
-          message: ${{ format('{0}({1})', steps.ci.outputs.version, steps.ci.outputs.sha1) }}
-          tag: ${{ steps.ci.outputs.version }}
+          add: "VERSION"
+          message: ${{ format('{0}({1})', steps.update.outputs.version, steps.update.outputs.sha1) }}
+          tag: ${{ steps.update.outputs.version }}
+          default_author: github_actions
